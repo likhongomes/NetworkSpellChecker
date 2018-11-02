@@ -5,13 +5,14 @@
 
 using namespace std;
 
-string compare(string str, vector<string> words){
-    string ret = "Misspelled";
+bool compare(string str, vector<string> words){
+    bool ret = false;
 
     for(int i = 0; i<words.size();i++){
+        //cout << words[i] << endl;
         if(str.compare(words[i]) == 0){
-            //cout << words[i] << endl;
-            ret = "OK";
+            cout << words[i] << endl;
+            ret = true;
         }
     }
     return ret;
@@ -35,9 +36,8 @@ int main(){
 
     string str = "";
     cout << "Input a word to look up: ";
-    cin >> str;
-    string result = compare(str,words);
-    cout << result << endl;
+    //getline(cin,str);
+    bool result = compare(str,words);
 
     } else {
         cout << "Dictionary not found" << endl;
