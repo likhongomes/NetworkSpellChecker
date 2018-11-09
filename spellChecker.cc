@@ -4,22 +4,29 @@
 #include <vector>
 #include <sys/socket.h>
 #include <string>
-
 #include "simpleServer.h"
+#include <pthread.h>
 
 #define DEFAULT_DICTIONARY "words"
 
 using namespace std;
 
-string compare(string str, vector<string> words){
-    string ret = "Misspelled";
-    
+
+
+
+string compare(string str1, vector<string> words){
+    string str = "";
+    for(int i = 0; i<str1.size(); i++){
+        if(isalpha(str1[i]))
+            str += str1[i];
+    }
+
+
+    string ret = "Misspelled\n";
     for(int i = 0; i<words.size();i++){
-        cout << "comparing "<< str << "with " << words[i] << endl;
         if(str.compare(words[i]) == 0){
-            cout << "asfasdfasd fa sdf asd f" << endl;
-            cout << words[i] << "Compare" << endl;
-            ret = "OK";
+            ret = "OK\n";
+            break;
         }
     }
     return ret;
@@ -47,6 +54,19 @@ int main(int argc, char* argv[]){
         printf("No port number entered.\n");
         return -1;
     }
+
+
+
+/*
+
+    pthread_t threadPool[WORKER_COUNT];
+    int threadIds[WORKER_COUNT];
+
+    cout << "launching threads" << endl;
+
+*/
+
+
 
 
 
@@ -92,7 +112,7 @@ int main(int argc, char* argv[]){
     printf("Connection success!\n");
     char *clientMessage = "Hello! I hope you can see this.\n";
     char *msgRequest = "Send me some text and I'll respond with something interesting!\nSend the escape key to close the connection.\n";
-    char *msgResponse = "Response: ";
+    char *msgResponse = "Ret: ";
     char *msgPrompt = ">>>";
     char *msgError = "I didn't get your message. ):\n";
     char *msgClose = "Goodbye!\n";
@@ -126,27 +146,19 @@ int main(int argc, char* argv[]){
         }
         else
         {
+
+            
+
+
             send(clientSocket, msgResponse, strlen(msgResponse), 0);
             string str(recvBuffer);
             cout << recvBuffer << endl;
             string result = compare(str, words);
             char s[100];
             strcpy(s, result.c_str());
-            cout << result << endl;
             send(clientSocket, s, bytesReturned, 0);
         }
     }
-
-
-
-    
-
-    string str = "";
-    cout << "Input a word to look up: ";
-    cin >> str;
-
-    string result = compare(str,words);
-    cout << result << endl;
 
     } else {
         cout << "Dictionary not found" << endl;

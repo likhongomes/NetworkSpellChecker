@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#define BUF_LEN 512
+#define BUF_LEN 1024
 int open_listenfd(int);
 #endif
+
+#define NUM_WORKERS 4
