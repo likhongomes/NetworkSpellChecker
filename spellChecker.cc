@@ -6,11 +6,12 @@
 #include <string>
 #include "simpleServer.h"
 #include <pthread.h>
-
 #define DEFAULT_DICTIONARY "words"
 
 using namespace std;
 
+pthread_t threadPool[WORKER_COUNT];
+int threadIDs[WORKER_COUNT];
 
 
 
@@ -20,7 +21,6 @@ string compare(string str1, vector<string> words){
         if(isalpha(str1[i]))
             str += str1[i];
     }
-
 
     string ret = "Misspelled\n";
     for(int i = 0; i<words.size();i++){
@@ -32,6 +32,10 @@ string compare(string str1, vector<string> words){
     return ret;
 }
 
+
+void *threadFunction(void *args){
+    cout << "thread called" << endl;
+}
 
 int main(int argc, char* argv[]){
 
@@ -123,9 +127,22 @@ int main(int argc, char* argv[]){
     send(clientSocket, clientMessage, strlen(clientMessage), 0);
     send(clientSocket, msgRequest, strlen(msgRequest), 0);
 
+    //This is where all the threads are created.
+    for(int i = 0; i < WORKER_COUNT; i++){
+		        threadIDs[i] = i;
+		        //Start running the threads.
+		        pthread_create(&threadPool[i], NULL, &threadFunction, &threadIDs[i]);
+	}
+
+    printf("All threads launched, waiting for them to quit.\n");
+	for(int i = 0; i < WORKER_COUNT; i++){
+		//Wait for all threads to finish executing.
+		pthread_join(threadPool[i], NULL);
+	}
+
+
     //Begin sending and receiving messages.
-    while (1)
-    {
+    while (1){
         send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
         //recv() will store the message from the user in the buffer, returning
         //how many bytes we received.
@@ -136,18 +153,15 @@ int main(int argc, char* argv[]){
         if (bytesReturned == -1)
         {
             send(clientSocket, msgError, strlen(msgError), 0);
-        }
-        //'27' is the escape key.
-        else if (recvBuffer[0] == 27)
-        {
+        } else if (recvBuffer[0] == 27) {//'27' is the escape key.
+        
             send(clientSocket, msgClose, strlen(msgClose), 0);
             close(clientSocket);
             break;
-        }
-        else
-        {
+        } else {
 
             
+
 
 
             send(clientSocket, msgResponse, strlen(msgResponse), 0);

@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
+#define WORKER_COUNT 4
+
 #define BUF_LEN 1024
 int open_listenfd(int);
 #endif
