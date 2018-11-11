@@ -6,13 +6,30 @@
 #include <string>
 #include "simpleServer.h"
 #include <pthread.h>
+
 #define DEFAULT_DICTIONARY "words"
 
 using namespace std;
-
+//Globals
 pthread_t threadPool[WORKER_COUNT];
-int threadIDs[WORKER_COUNT];
+int threadIDs[WORKER_COUNT], bytesReturned;
+struct sockaddr_in client;
+    int clientLen = sizeof(client);
+    
+    int connectionSocket,connectionSocket2, clientSocket;
 
+char recvBuffer[BUF_LEN];
+vector<string> words;
+queue<int> sockets;
+int threadId = 0;
+
+//Messages
+char *clientMessage = "Hello! I hope you can see this.\n";
+char *msgRequest = "Send me some text and I'll respond with something interesting!\nSend the escape key to close the connection.\n";
+char *msgResponse = "Ret: ";
+char *msgPrompt = ">>>";
+char *msgError = "I didn't get your message. ):\n";
+char *msgClose = "Goodbye!\n";
 
 
 string compare(string str1, vector<string> words){
@@ -34,106 +51,22 @@ string compare(string str1, vector<string> words){
 
 
 void *threadFunction(void *args){
-    cout << "thread called" << endl;
-}
+    cout << "thread " << threadId <<" called" << endl;
+    int clientSocket;
+    connectionSocket = sockets.front();
+    sockets.pop();
 
-int main(int argc, char* argv[]){
-
-    vector<string> words;
-
-    std::ifstream file(DEFAULT_DICTIONARY);
-    if (file.is_open()) {
-    std::string line;
-
-    //reading and populating data into the vector
-    while (getline(file, line)) {
-
-        words.push_back(line.c_str());
-
-    }
-    file.close();
-
-    if (argc == 1)
-    {
-        printf("No port number entered.\n");
-        return -1;
-    }
-
-
-
-
-
-
-
-
-    //sockaddr_in holds information about the user connection.
-    //We don't need it, but it needs to be passed into accept().
-    struct sockaddr_in client;
-    int clientLen = sizeof(client);
-    int connectionPort = atoi(argv[1]);
-    int connectionSocket, clientSocket, bytesReturned;
-    char recvBuffer[BUF_LEN];
-    recvBuffer[0] = '\0';
-
-    connectionPort = atoi(argv[1]);
-
-    //We can't use ports below 1024 and ports above 65535 don't exist.
-    if (connectionPort < 1024 || connectionPort > 65535)
-    {
-        printf("Port number is either too low(below 1024), or too high(above 65535).\n");
-        return -1;
-    }
-
-    //Does all the hard work for us.
-    connectionSocket = open_listenfd(connectionPort);
-    if (connectionSocket == -1)
-    {
-        printf("Could not connect to %s, maybe try another port number?\n", argv[1]);
-        return -1;
-    }
-
-    //accept() waits until a user connects to the server, writing information about that server
-    //into the sockaddr_in client.
-    //If the connection is successful, we obtain A SECOND socket descriptor.
-    //There are two socket descriptors being used now:
-    //One by the server to listen for incoming connections.
-    //The second that was just created that will be used to communicate with
-    //the connected user.
     if ((clientSocket = accept(connectionSocket, (struct sockaddr *)&client, (socklen_t*)&clientLen)) == -1)
     {
         printf("Error connecting to client.\n");
-        return -1;
+        //break;
     }
 
     printf("Connection success!\n");
-    char *clientMessage = "Hello! I hope you can see this.\n";
-    char *msgRequest = "Send me some text and I'll respond with something interesting!\nSend the escape key to close the connection.\n";
-    char *msgResponse = "Ret: ";
-    char *msgPrompt = ">>>";
-    char *msgError = "I didn't get your message. ):\n";
-    char *msgClose = "Goodbye!\n";
 
-    //send()...sends a message.
-    //We specify the socket we want to send, the message and it's length, the
-    //last parameter are flags.
     send(clientSocket, clientMessage, strlen(clientMessage), 0);
     send(clientSocket, msgRequest, strlen(msgRequest), 0);
 
-    //This is where all the threads are created.
-    for(int i = 0; i < WORKER_COUNT; i++){
-		        threadIDs[i] = i;
-		        //Start running the threads.
-		        pthread_create(&threadPool[i], NULL, &threadFunction, &threadIDs[i]);
-	}
-
-    printf("All threads launched, waiting for them to quit.\n");
-	for(int i = 0; i < WORKER_COUNT; i++){
-		//Wait for all threads to finish executing.
-		pthread_join(threadPool[i], NULL);
-	}
-
-
-    //Begin sending and receiving messages.
     while (1){
         send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
         //recv() will store the message from the user in the buffer, returning
@@ -162,9 +95,100 @@ int main(int argc, char* argv[]){
             string result = compare(str, words);
             char s[100];
             strcpy(s, result.c_str());
-            send(clientSocket, s, bytesReturned, 0);
+            cout << s << endl;
+            send(clientSocket, s, 100, 0);
         }
     }
+
+    cout << "Thread function quitting" << endl;
+}
+
+int main(int argc, char* argv[]){
+
+    
+
+    std::ifstream file(DEFAULT_DICTIONARY);
+    if (file.is_open()) {
+    std::string line;
+
+    //reading and populating data into the vector
+    while (getline(file, line)) {
+
+        words.push_back(line.c_str());
+
+    }
+    file.close();
+
+    if (argc == 1)
+    {
+        printf("No port number entered.\n");
+        return -1;
+    }
+
+
+    //sockaddr_in holds information about the user connection.
+    //We don't need it, but it needs to be passed into accept().
+    int connectionPort = atoi(argv[1]);
+    recvBuffer[0] = '\0';
+
+    connectionPort = atoi(argv[1]);
+
+    //We can't use ports below 1024 and ports above 65535 don't exist.
+    if (connectionPort < 1024 || connectionPort > 65535)
+    {
+        printf("Port number is either too low(below 1024), or too high(above 65535).\n");
+        return -1;
+    }
+
+
+    while(1){
+        //Does all the hard work for us.
+    connectionSocket = open_listenfd(connectionPort);
+    connectionSocket2 = open_listenfd(connectionPort+1);
+    if (connectionSocket == -1)
+    {
+        printf("Could not connect to %s, maybe try another port number?\n", argv[1]);
+        return -1;
+    }
+
+    //accept() waits until a user connects to the server, writing information about that server
+    //into the sockaddr_in client.
+    //If the connection is successful, we obtain A SECOND socket descriptor.
+    //There are two socket descriptors being used now:
+    //One by the server to listen for incoming connections.
+    //The second that was just created that will be used to communicate with
+    //the connected user.
+    
+    
+
+    //send()...sends a message.
+    //We specify the socket we want to send, the message and it's length, the
+    //last parameter are flags.
+   
+    
+    sockets.push(connectionSocket);
+    sockets.push(connectionSocket2);
+
+    //This is where all the threads are created.
+    for(int i = 0; i < WORKER_COUNT; i++){
+		threadIDs[i] = i;
+        threadId = i;
+		//Start running the threads.
+		pthread_create(&threadPool[i], NULL, &threadFunction, &threadIDs[i]);
+	}
+
+    printf("All threads launched, waiting for them to quit.\n");
+	for(int i = 0; i < WORKER_COUNT; i++){
+		//Wait for all threads to finish executing.
+		pthread_join(threadPool[i], NULL);
+	}
+    }
+
+    
+
+
+    //Begin sending and receiving messages.
+    
 
     } else {
         cout << "Dictionary not found" << endl;

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <queue>
 #define WORKER_COUNT 4
 
 #define BUF_LEN 1024
