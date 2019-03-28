@@ -135,6 +135,11 @@ int main(int argc, char* argv[]){
 			break;
 		}
 		else{
+            string comparator(recvBuffer);
+            string temp = compare(comparator, words);
+            char* result;
+            strcpy(result,temp.c_str());
+            //cout << recvBuffer;
 			send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
 			send(clientSocket, recvBuffer, bytesReturned, 0);
 		}
