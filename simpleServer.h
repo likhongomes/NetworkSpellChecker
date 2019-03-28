@@ -9,10 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-#include <queue>
 #include <semaphore.h>
-#include <condition_variable>
-#include <chrono>
 #define WORKER_COUNT 4
 
 #define BUF_LEN 1024
