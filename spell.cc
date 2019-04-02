@@ -17,6 +17,16 @@
 #include "simpleServer.h"
 #define WORKER_COUNT 4
 
+/*
+Likhon D. Gomes
+CIS 3207
+Prof Eugene Kwatney
+April 2nd, 2019
+*/
+
+
+
+
 #define BUF_LEN 1024
 int open_listenfd(int);
 #endif
@@ -136,8 +146,10 @@ int main(int argc, char* argv[]){
 		}
 		else{
             string comparator(recvBuffer);
-            string temp = compare(comparator, words);
-            cout << temp << endl;
+
+            string temp = "";
+            temp = compare(comparator, words);
+            //cout << "You have entered " <<temp << endl;
             char result[temp.length()];
             strcpy(result,temp.c_str());
             //cout << result;
@@ -164,10 +176,10 @@ string compare(string str1, vector<string> words){
             str += str1[i];
     }
 
-    string ret = str1 + " Misspelled\n";
+    string ret = "Misspelled\n";
     for(int i = 0; i<words.size();i++){
         if(str.compare(words[i]) == 0){
-            ret = str1 + "  OK\n";
+            ret = "OK\n";
             break;
         }
     }
