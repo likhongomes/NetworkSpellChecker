@@ -1,4 +1,3 @@
-
 #ifndef _SIMPLE_SERVER_H
 #define _SIMPLE_SERVER_H
 #include <sys/types.h>
@@ -46,24 +45,25 @@ int main(int argc, char* argv[]){
 
     struct sockaddr_in client;
 	int clientLen = sizeof(client);
-	int connectionPort = atoi(argv[1]);
+	int connectionPort;
 	int connectionSocket, clientSocket, bytesReturned;
 	char recvBuffer[BUF_LEN];
 	recvBuffer[0] = '\0';
 
 
-    connectionPort = 3207; // default port number
+    //connectionPort = 3207; // default port number
     string dictionary = DEFAULT_DICTIONARY;
 
     //doing some house keeping over here, checking for port number and dictionary.
     if (argc == 1){
-        printf("No port number entered. Switching to default port 3207\n");
+        cout << "No port number entered. Switching to default port 3207\n";
+        connectionPort = 3207;
     } else {
         connectionPort = atoi(argv[1]);
     }
 
     if (argc < 3) {
-        printf("No dictionary name entered, switching to DEFAULT_DICTIONARY\n");
+        cout << "No dictionary name entered, switching to DEFAULT_DICTIONARY\n";
     } else{
         dictionary = argv[2];
     }
@@ -137,11 +137,13 @@ int main(int argc, char* argv[]){
 		else{
             string comparator(recvBuffer);
             string temp = compare(comparator, words);
-            char* result;
+            cout << temp << endl;
+            char result[temp.length()];
             strcpy(result,temp.c_str());
+            //cout << result;
             //cout << recvBuffer;
-			send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
-			send(clientSocket, recvBuffer, bytesReturned, 0);
+			//send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
+			send(clientSocket, result, strlen(result), 0);
 		}
 	}
 

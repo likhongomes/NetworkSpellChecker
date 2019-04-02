@@ -31,7 +31,7 @@ condition_variable cv;
 
 
 
-//Server Messages
+//Messages
 char *clientMessage = "Hi, welcome to Leo's SpellChecker.\n";
 char *msgRequest = "Send me a word and I'll respond with, whether the word is spelled correctly or not.\n";
 char *msgResponse = "Ret: ";
