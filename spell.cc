@@ -2,7 +2,6 @@
 #define _SIMPLE_SERVER_H
 #include <sys/types.h>
 #include <sys/socket.h>
-//#include <string.h>
 #include <string>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -15,8 +14,12 @@
 #include <fstream>
 #include <vector>
 #include "simpleServer.h"
-#define WORKER_COUNT 4
 
+#define NUM_WORKER 4
+#define DEFAULT_DICTIONARY "/usr/share/dict/words"
+#define BUF_LEN 1024
+
+bool debug = false;
 /*
 Likhon D. Gomes
 CIS 3207
@@ -24,41 +27,48 @@ Prof Eugene Kwatney
 April 2nd, 2019
 */
 
+struct sockaddr_in client;
+int clientLen = sizeof(client);
+int connectionPort;
+int connectionSocket, clientSocket, bytesReturned;
+char recvBuffer[BUF_LEN];
+//recvBuffer[0] = '\0';
+
+//Messages
+char* clientMessage = "Status Code: 200\nSuccessfully connected to Spell Server\n";
+char* msgRequest = "Type in a spelling and click return key to get it checked by the server\n";
+char* msgResponse = "I actually don't have anything interesting to say...but I know you sent ";
+char* msgPrompt = ">>>";
+char* msgError = "I didn't get your message. ):\n";
+char* msgClose = "Goodbye!\n";
 
 
 
-#define BUF_LEN 1024
 int open_listenfd(int);
 #endif
 
 
-
-
-
-
-#define DEFAULT_DICTIONARY "/usr/share/dict/words"
+int clientSock;
 
 using namespace std;
 
 //Global Variables
 vector<string> words;
-//int connectionSocket, clientSocket, bytesReturned, connectionPort;
-//char* recvBuffer;
+vector<int> sockets;
 
 //function headers
 string compare(string str1, vector<string> words);
-
-
+void *getConnections(void *arg);
+void *worker(void *arg);
 
 
 int main(int argc, char* argv[]){
 
-    struct sockaddr_in client;
-	int clientLen = sizeof(client);
-	int connectionPort;
-	int connectionSocket, clientSocket, bytesReturned;
-	char recvBuffer[BUF_LEN];
-	recvBuffer[0] = '\0';
+    
+
+
+    pthread_t connectionGetter;
+    
 
 
     //connectionPort = 3207; // default port number
@@ -104,30 +114,79 @@ int main(int argc, char* argv[]){
 		return -1;
 	}
 
+    //Starting the tread connectionGetter that accepts connections
+    pthread_create(&connectionGetter, NULL, getConnections, (void *)connectionSocket);
+    
+	pthread_join(connectionGetter, NULL);
+    
+
+    
+
+
+    
+
+
+    /* //testing the vector
+    for(int x = 0; x<words.size(); x++){
+        cout << words[x] << endl;
+    }*/
+
+    return 0;
+}
+
+
+string compare(string str1, vector<string> words){
+    string str = "";
+    for(int i = 0; i<str1.size(); i++){
+        if(isalpha(str1[i]))
+            str += str1[i];
+    }
+
+    string ret = "Misspelled\n";
+    for(int i = 0; i<words.size();i++){
+        if(str.compare(words[i]) == 0){
+            ret = "OK\n";
+            break;
+        }
+    }
+    return ret;
+}
+
+
+void *getConnections(void *arg){
+    if(debug)cout << "Getting Connections" << endl;
+    int clientSocket = (long)arg;
     if((clientSocket = accept(connectionSocket, (struct sockaddr*) &client, (socklen_t *) &clientLen)) == -1){
 		printf("Error connecting to client.\n");
-		return -1;
 	}
-
-
     printf("Connection success!\n");
-    
-	char* clientMessage = "Status Code: 200\nSuccessfully connected to Spell Server\n";
-	char* msgRequest = "Type in a spelling and click return key to get it checked by the server\n";
-	char* msgResponse = "I actually don't have anything interesting to say...but I know you sent ";
-	char* msgPrompt = ">>>";
-	char* msgError = "I didn't get your message. ):\n";
-	char* msgClose = "Goodbye!\n";
-
+    cout << "printing1" << endl;
 
     //send()...sends a message.
 	//We specify the socket we want to send, the message and it's length, the 
 	//last parameter are flags.
 	send(clientSocket, clientMessage, strlen(clientMessage), 0);
+    cout << "printing2" << endl;
 	send(clientSocket, msgRequest, strlen(msgRequest), 0);
+    cout << "printing3" << endl;
+    clientSock = clientSocket;
+    cout << "Client Sock " << clientSock << endl;
+    
+
+    pthread_t connectionGetter2;
+    pthread_create(&connectionGetter2, NULL, worker, (void *)connectionSocket);
+    pthread_join(connectionGetter2, NULL);
 
 
+    return NULL;
+}
+
+
+void *worker(void *arg){
+    clientSocket = clientSock;
+    cout << "clientSocket " << clientSocket << endl;
     while(1){
+        
 		send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
 		//recv() will store the message from the user in the buffer, returning
 		//how many bytes we received.
@@ -158,30 +217,4 @@ int main(int argc, char* argv[]){
 			send(clientSocket, result, strlen(result), 0);
 		}
 	}
-
-
-    /* //testing the vector
-    for(int x = 0; x<words.size(); x++){
-        cout << words[x] << endl;
-    }*/
-
-    return 0;
-}
-
-
-string compare(string str1, vector<string> words){
-    string str = "";
-    for(int i = 0; i<str1.size(); i++){
-        if(isalpha(str1[i]))
-            str += str1[i];
-    }
-
-    string ret = "Misspelled\n";
-    for(int i = 0; i<words.size();i++){
-        if(str.compare(words[i]) == 0){
-            ret = "OK\n";
-            break;
-        }
-    }
-    return ret;
 }
