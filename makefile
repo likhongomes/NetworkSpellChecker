@@ -3,7 +3,7 @@ CC = g++
 
 TARGET:=spell
 
-$(TARGET):spellChecker.cc open_listenfd.cc		
+$(TARGET):spell.cc open_listenfd.cc		
 	@$(CC) $(CFLAGS) $^ -o $@
 
 
