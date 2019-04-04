@@ -1,5 +1,6 @@
 #include <iostream>
 #include <pthread.h>
+#include <queue>
 
 using namespace std;
 
@@ -14,14 +15,24 @@ void *b(void *args){
 
 int main(){
 
+    queue<int> q;
+    q.push(0);
+    
+    while(!q.empty()){
+        
+        cout << "testing " << endl;
+        q.pop();
+    }
+
+
     int x = 0;
     pthread_t a;
 
 
-        pthread_create(&a, NULL, b, (void *)x);
+        //pthread_create(&a, NULL, b, (void *)x);
 
-    for(int x = 0; x<100; x++)
-        cout << "XXXXX" << endl;
+    //for(int x = 0; x<100; x++)
+        //cout << "XXXXX" << endl;
     
     
     //pthread_join(&a, NULL);

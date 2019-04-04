@@ -13,6 +13,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <queue>
+#include <mutex>
 #include "simpleServer.h"
 
 #define NUM_WORKER 4
@@ -30,7 +32,7 @@ April 2nd, 2019
 struct sockaddr_in client;
 int clientLen = sizeof(client);
 int connectionPort;
-int connectionSocket, clientSocket, bytesReturned;
+int connectionSocket, bytesReturned;
 char recvBuffer[BUF_LEN];
 //recvBuffer[0] = '\0';
 
@@ -54,7 +56,9 @@ using namespace std;
 
 //Global Variables
 vector<string> words;
-vector<int> sockets;
+queue<int> sockets;
+mutex mtx;
+
 
 //function headers
 string compare(string str1, vector<string> words);
@@ -114,12 +118,17 @@ int main(int argc, char* argv[]){
 		return -1;
 	}
 
+    /*
+    pthread_t threadID[NUM_WORKER];
+        for(int i = 0; i<NUM_WORKER; i++){
+            pthread_create(&threadID[i], NULL, worker, (void *)i);
+        }*/
+
     //Starting the tread connectionGetter that accepts connections
     pthread_create(&connectionGetter, NULL, getConnections, (void *)connectionSocket);
     
 	pthread_join(connectionGetter, NULL);
     
-
     
 
 
@@ -158,28 +167,25 @@ void *getConnections(void *arg){
 
     
     while(true){
-        
         if(debug)cout << "Getting Connections" << endl;
-        int clientSocket = (long)arg;
+        int clientSocket;
+        int connectionSocket = (long)arg;
         if((clientSocket = accept(connectionSocket, (struct sockaddr*) &client, (socklen_t *) &clientLen)) == -1){
             printf("Error connecting to client.\n");
         }
         printf("Connection success!\n");
-        cout << "printing1" << endl;
 
         //send()...sends a message.
         //We specify the socket we want to send, the message and it's length, the 
         //last parameter are flags.
         send(clientSocket, clientMessage, strlen(clientMessage), 0);
-        cout << "printing2" << endl;
         send(clientSocket, msgRequest, strlen(msgRequest), 0);
-        cout << "printing3" << endl;
-        clientSock = clientSocket;
-        cout << "Client Sock " << clientSock << endl;
-        
-        cout << "This should not print" << endl;
-        pthread_t connectionGetter2;
-        pthread_create(&connectionGetter2, NULL, worker, (void *)connectionSocket);
+        sockets.push(clientSocket);
+        cout << endl;
+
+        pthread_t thread;
+        int i = 0;
+        pthread_create(&thread, NULL, worker, (void *)i);
         
     }
 
@@ -191,15 +197,32 @@ void *getConnections(void *arg){
 
 
 void *worker(void *arg){
-    clientSocket = clientSock;
-    cout << "clientSocket " << clientSocket << endl;
+    int threadID = (long)arg;
+    //cout << "Creating Thread " << threadID << endl;
+    int clientSocket;
     while(1){
-        cout << "hello" << endl;
-		send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
+        //cout << threadID << " " << clientSocket << endl;
+
+        
+        while(!sockets.empty()){
+            
+            mtx.lock();
+
+            if(!sockets.empty()){
+                cout << "Q Size "<<sockets.size() << endl;
+                clientSocket = sockets.front();
+                sockets.pop();
+            }
+            mtx.unlock();
+            //cout << "Q Size "<<sockets.size() << endl;
+            cout << "Thread " << threadID << " Servicing clientSocket " << clientSocket << endl; 
+
+            while(true){
+                send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
 		//recv() will store the message from the user in the buffer, returning
 		//how many bytes we received.
 		bytesReturned = recv(clientSocket, recvBuffer, BUF_LEN, 0);
-
+        
 		//Check if we got a message, send a message back or quit if the
 		//user specified it.
 		if(bytesReturned == -1){
@@ -224,5 +247,12 @@ void *worker(void *arg){
 			//send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
 			send(clientSocket, result, strlen(result), 0);
 		}
+            }
+            cout << "Code broke " << threadID << endl;
+        }
+
+        
+        
 	}
+    cout << "done execution client socket " << clientSocket << endl;
 }
