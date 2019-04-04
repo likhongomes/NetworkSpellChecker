@@ -17,7 +17,7 @@
 #include <mutex>
 #include "simpleServer.h"
 
-#define NUM_WORKER 4
+#define NUM_WORKER 2
 #define DEFAULT_DICTIONARY "/usr/share/dict/words"
 #define BUF_LEN 1024
 
@@ -57,6 +57,7 @@ using namespace std;
 //Global Variables
 vector<string> words;
 queue<int> sockets;
+queue<string> log;
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t c = PTHREAD_COND_INITIALIZER;;
 
@@ -68,9 +69,6 @@ void *worker(void *arg);
 
 int main(int argc, char* argv[]){
 
-
-    
-    
     string dictionary = DEFAULT_DICTIONARY;
 
     //doing some house keeping over here, checking for port number and dictionary.
@@ -126,27 +124,9 @@ int main(int argc, char* argv[]){
 }
 
 
-string compare(string str1, vector<string> words){
-    string str = "";
-    for(int i = 0; i<str1.size(); i++){
-        if(isalpha(str1[i]))
-            str += str1[i];
-    }
-
-    string ret = "Misspelled\n";
-    for(int i = 0; i<words.size();i++){
-        if(str.compare(words[i]) == 0){
-            ret = "OK\n";
-            break;
-        }
-    }
-    return ret;
-}
 
 
 void *getConnections(void *arg){
-
-
     
     while(true){
         if(debug)cout << "Getting Connections" << endl;
@@ -167,16 +147,8 @@ void *getConnections(void *arg){
         pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
         cout << endl;
-
-        //pthread_t thread;
-        //int i = 0;
-        //pthread_create(&thread, NULL, worker, (void *)i);
         
     }
-
-    
-
-
     return NULL;
 }
 
@@ -184,10 +156,6 @@ void *getConnections(void *arg){
 void *worker(void *arg){
     int threadID = (long)arg;
     int clientSocket;
-    cout << "Thread "<< threadID << " Created"<< endl;
-
-
-    
 
     while(1){
         //cout << threadID << " " << clientSocket << endl;
@@ -228,19 +196,14 @@ void *worker(void *arg){
                 }
                 else{
                     string comparator(recvBuffer);
-
                     string temp = "";
                     temp = compare(comparator, words);
-                    //cout << "You have entered " <<temp << endl;
                     char result[temp.length()];
                     strcpy(result,temp.c_str());
-                    //cout << result;
-                    //cout << recvBuffer;
-                    //send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
                     send(clientSocket, result, strlen(result), 0);
 		        }
             }
-            cout << "Code broke " << threadID << endl;
+            cout << "Thread " << threadID << " finished serving "<< "Client Socket "<<clientSocket << endl;
             close(clientSocket);
         }
 
@@ -248,4 +211,22 @@ void *worker(void *arg){
         
 	}
     cout << "done execution client socket " << clientSocket << endl;
+}
+
+string compare(string str1, vector<string> words){
+
+    string str = "";
+    for(int i = 0; i<str1.size(); i++){
+        if(isalpha(str1[i]))
+            str += str1[i];
+    }
+
+    string ret = str + " Misspelled\n";
+    for(int i = 0; i<words.size();i++){
+        if(str.compare(words[i]) == 0){
+            ret = str + " OK\n";
+            break;
+        }
+    }
+    return ret;
 }
