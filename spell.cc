@@ -154,28 +154,36 @@ string compare(string str1, vector<string> words){
 
 
 void *getConnections(void *arg){
-    if(debug)cout << "Getting Connections" << endl;
-    int clientSocket = (long)arg;
-    if((clientSocket = accept(connectionSocket, (struct sockaddr*) &client, (socklen_t *) &clientLen)) == -1){
-		printf("Error connecting to client.\n");
-	}
-    printf("Connection success!\n");
-    cout << "printing1" << endl;
 
-    //send()...sends a message.
-	//We specify the socket we want to send, the message and it's length, the 
-	//last parameter are flags.
-	send(clientSocket, clientMessage, strlen(clientMessage), 0);
-    cout << "printing2" << endl;
-	send(clientSocket, msgRequest, strlen(msgRequest), 0);
-    cout << "printing3" << endl;
-    clientSock = clientSocket;
-    cout << "Client Sock " << clientSock << endl;
+
     
+    while(true){
+        
+        if(debug)cout << "Getting Connections" << endl;
+        int clientSocket = (long)arg;
+        if((clientSocket = accept(connectionSocket, (struct sockaddr*) &client, (socklen_t *) &clientLen)) == -1){
+            printf("Error connecting to client.\n");
+        }
+        printf("Connection success!\n");
+        cout << "printing1" << endl;
 
-    pthread_t connectionGetter2;
-    pthread_create(&connectionGetter2, NULL, worker, (void *)connectionSocket);
-    pthread_join(connectionGetter2, NULL);
+        //send()...sends a message.
+        //We specify the socket we want to send, the message and it's length, the 
+        //last parameter are flags.
+        send(clientSocket, clientMessage, strlen(clientMessage), 0);
+        cout << "printing2" << endl;
+        send(clientSocket, msgRequest, strlen(msgRequest), 0);
+        cout << "printing3" << endl;
+        clientSock = clientSocket;
+        cout << "Client Sock " << clientSock << endl;
+        
+        cout << "This should not print" << endl;
+        pthread_t connectionGetter2;
+        pthread_create(&connectionGetter2, NULL, worker, (void *)connectionSocket);
+        
+    }
+
+    
 
 
     return NULL;
@@ -186,7 +194,7 @@ void *worker(void *arg){
     clientSocket = clientSock;
     cout << "clientSocket " << clientSocket << endl;
     while(1){
-        
+        cout << "hello" << endl;
 		send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
 		//recv() will store the message from the user in the buffer, returning
 		//how many bytes we received.
