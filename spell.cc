@@ -16,7 +16,6 @@
 #include <vector>
 #include <queue>
 #include <mutex>
-#include "simpleServer.h"
 
 #define NUM_WORKER 2
 #define DEFAULT_DICTIONARY "/usr/share/dict/words"
@@ -65,7 +64,9 @@ string compare(string str1, vector<string> words);
 void *getConnections(void *arg);
 void *worker(void *arg);
 void *writeLog(void *args);
-
+void enqueue(int clientSocket);
+int dequeue(int threadID);
+void logEnqueue(string temp);
 
 int main(int argc, char* argv[]){
 
@@ -158,11 +159,8 @@ void *getConnections(void *arg){
         send(clientSocket, clientMessage, strlen(clientMessage), 0);
         send(clientSocket, msgRequest, strlen(msgRequest), 0);
         
-
-        pthread_mutex_lock(&m);
-        sockets.push(clientSocket);
-        pthread_cond_signal(&c);
-        pthread_mutex_unlock(&m);
+        //critical section
+        enqueue(clientSocket);
         
         cout << endl;
         
@@ -184,17 +182,12 @@ void *worker(void *arg){
     while(1){ // this is the master loop
         if(sockets.empty()){
             pthread_mutex_lock(&m);
-
             pthread_cond_wait(&c, &m);
             pthread_mutex_unlock(&m);
         }        
         while(!sockets.empty()){ // it looks for for open connection.
             
-            pthread_mutex_lock(&m);
-            clientSocket = sockets.front();
-            sockets.pop();
-            cout << "Thread " << threadID << " Servicing clientSocket " << clientSocket << endl; 
-            pthread_mutex_unlock(&m);
+            clientSocket = dequeue(threadID);
 
             while(true){ //this is the main connection loop that keeps going until the client hits ESC.
                 memset(recvBuffer, 0, 1024);
@@ -217,10 +210,7 @@ void *worker(void *arg){
                     string temp = "";
                     temp = compare(comparator, words);
                     //Critical section starts
-                    pthread_mutex_lock(&mLog);
-                    logQ.push(temp);
-                    pthread_cond_signal(&cLog);
-                    pthread_mutex_unlock(&mLog);
+                    logEnqueue(temp);
                     //End of critical section
                     char result[temp.length()];
                     strcpy(result,temp.c_str());
@@ -280,3 +270,28 @@ string compare(string str1, vector<string> words){
     return ret;
 }
 
+//wrapper function for enqueue
+void enqueue(int clientSocket){
+    pthread_mutex_lock(&m);
+    sockets.push(clientSocket);
+    pthread_cond_signal(&c);
+    pthread_mutex_unlock(&m);
+}
+
+//wrapper function for dequeue
+int dequeue(int threadID){
+    pthread_mutex_lock(&m);
+    int clientSocket = sockets.front();
+    sockets.pop();
+    cout << "Thread " << threadID << " Servicing clientSocket " << clientSocket << endl; 
+    pthread_mutex_unlock(&m);
+    return clientSocket;
+}
+
+//wrapper function for logEnqueue
+void logEnqueue(string temp){
+    pthread_mutex_lock(&mLog);
+    logQ.push(temp);
+    pthread_cond_signal(&cLog);
+    pthread_mutex_unlock(&mLog);
+}
