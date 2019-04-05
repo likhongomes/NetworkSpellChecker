@@ -48,6 +48,7 @@ int connectionPort;
 int connectionSocket, bytesReturned;
 char recvBuffer[BUF_LEN];
 
+
 vector<string> words;
 queue<int> sockets;
 queue<string> logQ;
@@ -196,10 +197,13 @@ void *worker(void *arg){
             pthread_mutex_unlock(&m);
 
             while(true){ //this is the main connection loop that keeps going until the client hits ESC.
+                memset(recvBuffer, 0, 1024);
                 send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
                 //recv() will store the message from the user in the buffer, returning
                 //how many bytes we received.
+                
                 bytesReturned = recv(clientSocket, recvBuffer, BUF_LEN, 0);
+                //cout << "This is what we got " << recvBuffer << endl;
                 //Check if we got a message, send a message back or quit if the
                 //user specified it.
                 if(bytesReturned == -1){
