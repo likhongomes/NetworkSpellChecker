@@ -18,7 +18,7 @@
 #include <mutex>
 #include "simpleServer.h"
 
-#define NUM_WORKER 4
+#define NUM_WORKER 2
 #define DEFAULT_DICTIONARY "/usr/share/dict/words"
 #define BUF_LEN 1024
 
