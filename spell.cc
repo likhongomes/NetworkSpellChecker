@@ -12,6 +12,7 @@
 #include <semaphore.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -21,7 +22,7 @@
 #define DEFAULT_DICTIONARY "/usr/share/dict/words"
 #define BUF_LEN 1024
 
-bool debug = false;
+
 /*
 Likhon D. Gomes
 CIS 3207
@@ -46,15 +47,6 @@ char* msgPrompt = ">>>";
 char* msgError = "I didn't get your message. ):\n";
 char* msgClose = "Goodbye!\n";
 
-
-
-int open_listenfd(int);
-#endif
-
-
-int clientSock;
-
-
 //Global Variables
 vector<string> words;
 queue<int> sockets;
@@ -63,6 +55,9 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mLog = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t c = PTHREAD_COND_INITIALIZER;;
 pthread_cond_t cLog = PTHREAD_COND_INITIALIZER;;
+int open_listenfd(int);
+#endif
+
 
 //function headers
 string compare(string str1, vector<string> words);
@@ -82,7 +77,6 @@ int main(int argc, char* argv[]){
     } else {
         connectionPort = atoi(argv[1]);
     }
-
     if (argc < 3) {
         cout << "No dictionary name entered, switching to DEFAULT_DICTIONARY\n";
     } else{
@@ -138,7 +132,6 @@ int main(int argc, char* argv[]){
 void *getConnections(void *arg){
     
     while(true){
-        if(debug)cout << "Getting Connections" << endl;
         int clientSocket;
         int connectionSocket = (long)arg;
         if((clientSocket = accept(connectionSocket, (struct sockaddr*) &client, (socklen_t *) &clientLen)) == -1){
@@ -170,18 +163,12 @@ void *worker(void *arg){
     int clientSocket;
 
     while(1){
-        //cout << threadID << " " << clientSocket << endl;
-
-        queue<int> q;
-
         if(sockets.empty()){
             pthread_mutex_lock(&m);
 
             pthread_cond_wait(&c, &m);
             pthread_mutex_unlock(&m);
         }        
-        
-
         while(!sockets.empty()){
             
             pthread_mutex_lock(&m);
@@ -189,14 +176,12 @@ void *worker(void *arg){
             sockets.pop();
             cout << "Thread " << threadID << " Servicing clientSocket " << clientSocket << endl; 
             pthread_mutex_unlock(&m);
-            
 
             while(true){
                 send(clientSocket, msgPrompt, strlen(msgPrompt), 0);
                 //recv() will store the message from the user in the buffer, returning
                 //how many bytes we received.
                 bytesReturned = recv(clientSocket, recvBuffer, BUF_LEN, 0);
-                
                 //Check if we got a message, send a message back or quit if the
                 //user specified it.
                 if(bytesReturned == -1){
@@ -205,15 +190,13 @@ void *worker(void *arg){
                     send(clientSocket, msgClose, strlen(msgClose), 0);
                     close(clientSocket);
                     break;
-                }
-                else{
+                } else {
                     string comparator(recvBuffer);
                     string temp = "";
                     temp = compare(comparator, words);
 
                     pthread_mutex_lock(&mLog);
                     logQ.push(temp);
-                    cout << "log q size " << logQ.size() << endl;
                     pthread_cond_signal(&cLog);
                     pthread_mutex_unlock(&mLog);
 
@@ -227,28 +210,24 @@ void *worker(void *arg){
         }
 
 	}
-    cout << "done execution client socket " << clientSocket << endl;
 }
 
 
 void *writeLog(void *args){
 
-
+    ofstream file;
+    file.open("log.txt",ios_base::app);
 
     while(true){
-        cout << "got into the log" << endl;
         pthread_mutex_lock(&mLog);
-         while(logQ.empty()){
-            cout << "going to sleep " << endl;
+        while(logQ.empty()){
             pthread_cond_wait(&cLog, &mLog); 
         } 
-        cout << "making progress" << endl;
         string data = logQ.front();
         logQ.pop();
-        cout << "from the queue " << data << endl;
+        file << data << endl;
         pthread_mutex_unlock(&mLog);
     }
-
     
 }
 
@@ -260,7 +239,6 @@ string compare(string str1, vector<string> words){
         if(isalpha(str1[i]))
             str += str1[i];
     }
-
     string ret = str + " Misspelled\n";
     for(int i = 0; i<words.size();i++){
         if(str.compare(words[i]) == 0){
