@@ -17,7 +17,7 @@
 #include <mutex>
 #include "simpleServer.h"
 
-#define NUM_WORKER 2
+#define NUM_WORKER 4
 #define DEFAULT_DICTIONARY "/usr/share/dict/words"
 #define BUF_LEN 1024
 
@@ -28,6 +28,8 @@ CIS 3207
 Prof Eugene Kwatney
 April 2nd, 2019
 */
+
+using namespace std;
 
 struct sockaddr_in client;
 int clientLen = sizeof(client);
@@ -52,19 +54,21 @@ int open_listenfd(int);
 
 int clientSock;
 
-using namespace std;
 
 //Global Variables
 vector<string> words;
 queue<int> sockets;
-queue<string> log;
+queue<string> logQ;
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mLog = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t c = PTHREAD_COND_INITIALIZER;;
+pthread_cond_t cLog = PTHREAD_COND_INITIALIZER;;
 
 //function headers
 string compare(string str1, vector<string> words);
 void *getConnections(void *arg);
 void *worker(void *arg);
+void *writeLog(void *args);
 
 
 int main(int argc, char* argv[]){
@@ -97,10 +101,7 @@ int main(int argc, char* argv[]){
         file.close();
     }
 
-    pthread_t threadID[NUM_WORKER];
-        for(int i = 0; i<NUM_WORKER; i++){
-            pthread_create(&threadID[i], NULL, worker, (void *)i);
-    }
+    
 
     
     //Does all the hard work for us.
@@ -110,6 +111,14 @@ int main(int argc, char* argv[]){
 		printf("Could not connect to %s, maybe try another port number?\n", argv[1]);
 		return -1;
 	}
+
+    pthread_t threadID[NUM_WORKER];
+    for(int i = 0; i<NUM_WORKER; i++){
+        pthread_create(&threadID[i], NULL, worker, (void *)i);
+    }
+
+    pthread_t logThread;
+    pthread_create(&logThread, NULL, writeLog, (void *)connectionSocket);
 
     //Starting the tread connectionGetter that accepts connections
     pthread_t connectionGetter;
@@ -142,10 +151,13 @@ void *getConnections(void *arg){
         //last parameter are flags.
         send(clientSocket, clientMessage, strlen(clientMessage), 0);
         send(clientSocket, msgRequest, strlen(msgRequest), 0);
-        sockets.push(clientSocket);
+        
+
         pthread_mutex_lock(&m);
+        sockets.push(clientSocket);
         pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
+        
         cout << endl;
         
     }
@@ -198,6 +210,13 @@ void *worker(void *arg){
                     string comparator(recvBuffer);
                     string temp = "";
                     temp = compare(comparator, words);
+
+                    pthread_mutex_lock(&mLog);
+                    logQ.push(temp);
+                    cout << "log q size " << logQ.size() << endl;
+                    pthread_cond_signal(&cLog);
+                    pthread_mutex_unlock(&mLog);
+
                     char result[temp.length()];
                     strcpy(result,temp.c_str());
                     send(clientSocket, result, strlen(result), 0);
@@ -207,11 +226,32 @@ void *worker(void *arg){
             close(clientSocket);
         }
 
-        
-        
 	}
     cout << "done execution client socket " << clientSocket << endl;
 }
+
+
+void *writeLog(void *args){
+
+
+
+    while(true){
+        cout << "got into the log" << endl;
+        pthread_mutex_lock(&mLog);
+         while(logQ.empty()){
+            cout << "going to sleep " << endl;
+            pthread_cond_wait(&cLog, &mLog); 
+        } 
+        cout << "making progress" << endl;
+        string data = logQ.front();
+        logQ.pop();
+        cout << "from the queue " << data << endl;
+        pthread_mutex_unlock(&mLog);
+    }
+
+    
+}
+
 
 string compare(string str1, vector<string> words){
 
@@ -230,3 +270,4 @@ string compare(string str1, vector<string> words){
     }
     return ret;
 }
+
